@@ -13,7 +13,7 @@ namespace OSTIoTWorkshop
     public static class HandleHighTemp
     {
         private static ServiceClient _serviceClient = null;
-        private static string _connectionString = null;
+        private static string _connectionString = Environment.GetEnvironmentVariable( "IotHubConnectionString" );
 
         [FunctionName("HandleHighTemp")]
         public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]HttpRequestMessage req, TraceWriter log)
@@ -21,7 +21,6 @@ namespace OSTIoTWorkshop
             log.Info( $"C# IoT Hub trigger function processed a message: {req}" );
 
             var rawContent = await req.Content.ReadAsStringAsync();
-
             log.Info( $"Given content: {rawContent}" );
 
             // Tell stream analytics that the batch size is too big. Will automatically adjust down
