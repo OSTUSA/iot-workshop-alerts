@@ -1,7 +1,9 @@
-using System.Linq;
+using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.Azure.Devices;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
@@ -10,26 +12,57 @@ namespace OSTIoTWorkshop
 {
     public static class HandleHighTemp
     {
+        private static ServiceClient _serviceClient = null;
+        private static string _connectionString = null;
+
         [FunctionName("HandleHighTemp")]
         public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]HttpRequestMessage req, TraceWriter log)
         {
-            log.Info("C# HTTP trigger function processed a request.");
+            log.Info( $"C# IoT Hub trigger function processed a message: {req}" );
 
-            // parse query parameter
-            string name = req.GetQueryNameValuePairs()
-                .FirstOrDefault(q => string.Compare(q.Key, "name", true) == 0)
-                .Value;
+            var rawContent = await req.Content.ReadAsStringAsync();
 
-            if (name == null)
+            log.Info( $"Given content: {rawContent}" );
+
+            // Tell stream analytics that the batch size is too big. Will automatically adjust down
+            // https://docs.microsoft.com/en-us/azure/stream-analytics/stream-analytics-with-azure-functions#create-a-function-in-azure-functions-that-can-write-data-to-azure-redis-cache
+            if ( rawContent.ToString().Length > 262144 )
             {
-                // Get request body
-                dynamic data = await req.Content.ReadAsAsync<object>();
-                name = data?.name;
+                log.Info( "Content too big:" + rawContent.ToString().Length );
+                return new HttpResponseMessage( HttpStatusCode.RequestEntityTooLarge );
             }
 
-            return name == null
-                ? req.CreateResponse(HttpStatusCode.BadRequest, "Please pass a name on the query string or in the request body")
-                : req.CreateResponse(HttpStatusCode.OK, "Hello " + name);
+            try
+            {
+                if ( _serviceClient == null )
+                {
+                    _serviceClient = ServiceClient.CreateFromConnectionString( _connectionString );
+                }
+
+                var highTempDevices = await req.Content.ReadAsAsync<List<EventDTO>>();
+                log.Info( $"Have {highTempDevices.Count} devices to notify." );
+
+                // Send a C2D message to each high temp device
+                var tasks = new List<Task>();
+                foreach( var highTempDevice in highTempDevices )
+                {
+                    var warning = new Warning( highTempDevice.DeviceId, highTempDevice.Temperature );
+                    var message = new Message( warning.ToByteArray() );
+                    log.Info( $"Notifying: {warning.DeviceId}" );
+                    tasks.Add( _serviceClient.SendAsync( highTempDevice.DeviceId, message ) );
+                }
+                await Task.WhenAll( tasks );
+
+                log.Info( "All devices notified" );
+                return req.CreateResponse( HttpStatusCode.OK );
+            }
+            catch ( Exception ex )
+            {
+                log.Warning( "Caught exception:" + ex.Message );
+                // Return success anyway, since this is a demo and we don't want to get 
+                //  a queue backed up, especially for simulated devices
+                return req.CreateResponse( HttpStatusCode.OK );
+            }
         }
     }
 }
