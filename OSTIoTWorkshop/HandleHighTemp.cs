@@ -63,7 +63,6 @@ namespace OSTIoTWorkshop
             catch ( Exception ex )
             {
                 log.Warning( "Caught exception:" + ex.Message );
-                log.Warning( ex.StackTrace );
 
                 // Return success anyway, since this is a demo and we don't want to get 
                 //  a queue backed up, especially for simulated devices
