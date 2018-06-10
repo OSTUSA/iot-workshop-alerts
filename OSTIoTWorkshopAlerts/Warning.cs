@@ -2,7 +2,7 @@
 using Newtonsoft.Json;
 using System.Text;
 
-namespace OSTIoTWorkshop
+namespace OSTIoTWorkshopAlerts
 {
     public class Warning
     {

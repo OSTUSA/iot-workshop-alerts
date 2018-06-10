@@ -8,7 +8,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 
-namespace OSTIoTWorkshop
+namespace OSTIoTWorkshopAlerts
 {
     public static class HandleHighTemp
     {
