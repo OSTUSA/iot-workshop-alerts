@@ -46,9 +46,8 @@ namespace OSTIoTWorkshop
                 foreach( var highTempDevice in highTempDevices )
                 {
                     var warning = new Warning( highTempDevice.DeviceId, highTempDevice.Temperature );
-                    var message = new Message( warning.ToByteArray() );
                     log.Info( $"Notifying: {warning.DeviceId}" );
-                    tasks.Add( _serviceClient.SendAsync( highTempDevice.DeviceId, message ) );
+                    tasks.Add( _serviceClient.SendAsync( highTempDevice.DeviceId, warning.ToMessage() ) );
                 }
                 await Task.WhenAll( tasks );
 

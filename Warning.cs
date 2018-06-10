@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Azure.Devices;
+using Newtonsoft.Json;
 using System.Text;
 
 namespace OSTIoTWorkshop
@@ -12,6 +13,12 @@ namespace OSTIoTWorkshop
         {
             DeviceId = deviceId;
             CurrentTemp = temperature;
+        }
+
+        public Message ToMessage()
+        {
+            var message = new Message( ToByteArray() );
+            return message;
         }
 
         public byte[] ToByteArray()
