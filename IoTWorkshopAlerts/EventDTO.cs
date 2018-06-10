@@ -1,4 +1,4 @@
-﻿namespace OSTIoTWorkshopAlerts
+﻿namespace IoTWorkshopAlerts
 {
     /// <summary>
     /// Defines event content structure
