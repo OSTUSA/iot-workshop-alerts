@@ -13,7 +13,7 @@ namespace OSTIoTWorkshop
     public static class HandleHighTemp
     {
         private static ServiceClient _serviceClient = null;
-        private static string _connectionString = Environment.GetEnvironmentVariable( "IotHubConnectionString" );
+        private static string _connectionString = null;
 
         [FunctionName("HandleHighTemp")]
         public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]HttpRequestMessage req, TraceWriter log)
@@ -25,7 +25,7 @@ namespace OSTIoTWorkshop
 
             // Tell stream analytics that the batch size is too big. Will automatically adjust down
             // https://docs.microsoft.com/en-us/azure/stream-analytics/stream-analytics-with-azure-functions#create-a-function-in-azure-functions-that-can-write-data-to-azure-redis-cache
-            if ( rawContent.ToString().Length > 262144 )
+            if ( rawContent?.ToString().Length > 262144 )
             {
                 log.Info( "Content too big:" + rawContent.ToString().Length );
                 return new HttpResponseMessage( HttpStatusCode.RequestEntityTooLarge );
@@ -35,10 +35,16 @@ namespace OSTIoTWorkshop
             {
                 if ( _serviceClient == null )
                 {
+                    _connectionString = Environment.GetEnvironmentVariable( "IotHubConnectionString" );
                     _serviceClient = ServiceClient.CreateFromConnectionString( _connectionString );
                 }
 
                 var highTempDevices = await req.Content.ReadAsAsync<List<EventDTO>>();
+                if( highTempDevices == null || highTempDevices.Count == 0 )
+                {
+                    log.Info( "No devices found in request." );
+                    return req.CreateResponse( HttpStatusCode.OK );
+                }
                 log.Info( $"Have {highTempDevices.Count} devices to notify." );
 
                 // Send a C2D message to each high temp device
@@ -57,6 +63,8 @@ namespace OSTIoTWorkshop
             catch ( Exception ex )
             {
                 log.Warning( "Caught exception:" + ex.Message );
+                log.Warning( ex.StackTrace );
+
                 // Return success anyway, since this is a demo and we don't want to get 
                 //  a queue backed up, especially for simulated devices
                 return req.CreateResponse( HttpStatusCode.OK );
